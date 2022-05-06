@@ -7,7 +7,8 @@ import cv2
 
 class Frames():
     def __init__(self):
-        self.time_to_execute = 10
+        self.time_to_execute = 5
+
         self.dict_for_time = dict()
         
 
@@ -22,7 +23,7 @@ class Frames():
         start_time = time.time()
         # camera.resolution = (1280, 720)
         camera.resolution = (160, 160)
-        camera.vflip = True
+        camera.vflip = False
         camera.contrast = 10
         executed_time = 0
         video_number = 1
@@ -33,9 +34,11 @@ class Frames():
             file_name = "/home/pi/videos/" + video_name
             self.dict_for_time[video_name] = time.time()
             # print("Start recording...")
+            camera.start_preview()
             camera.start_recording(file_name)
             camera.wait_recording(0.5)
             camera.stop_recording()
+            camera.stop_preview()
             # print("Done.")
             executed_time += 0.5
             video_number += 1

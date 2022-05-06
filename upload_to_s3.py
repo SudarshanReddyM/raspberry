@@ -22,11 +22,12 @@ class UploadVideo():
         while number <= total_number:
             # file_name = "video" + str(number) + ".h264"
             file_name = str(number) + ".h264"
-            # path_of_video_file = self.video_path + file_name
-            path_of_video_file = self.extract_frames(file_name)
+            path_of_video_file = self.video_path + file_name
+            # path_of_video_file = self.extract_frames(file_name)
             # print("Video Name :", path_of_video_file)
             self.upload_video_to_s3(s3, path_of_video_file, path_of_video_file.split("/")[-1])
             self.timeline_dict[str(number)] = time.time()
+            print(file_name, time.time())
             # print("upload success")
             number += 1
             time.sleep(0.5)
@@ -42,6 +43,7 @@ class UploadVideo():
     
     def fetch_result_from_sqs(self):
         queue = self.sqs_service.get_queue_by_name(QueueName=self.sqs_response_queue_name)
+        processed_time = time.time()
         messages = queue.receive_messages(MaxNumberOfMessages=1, WaitTimeSeconds=20)
         if messages:
             for m in messages:
@@ -54,7 +56,8 @@ class UploadVideo():
                 # print("Picture Name: ", picture_name)
                 # print("content: ", list(content.keys())[0])
                 print(f"The person {picture_name} recognized: ", content[pic])
-                print("Latency: ",time.time() - self.timeline_dict[picture_name])
+                print("Latency: ",processed_time - self.timeline_dict[picture_name])
+                print("request received", processed_time)
                 # print("content", list(content.values())[0])
         return
 
@@ -64,7 +67,7 @@ class UploadVideo():
         cam = cv2.VideoCapture(self.video_path + file_name)
         ret, frame = cam.read()
         if ret:
-            image_name = self.video_path + file_name.split(".")[0] + ".jpg"
+            image_name = self.video_path + file_name.split(".")[0] + ".png"
             cv2.imwrite(image_name, frame)
             # img = cv2.imread(image_name, cv2.IMREAD_UNCHANGED)
             # resized = cv2.resize(img, (160, 160), interpolation = cv2.INTER_AREA)
@@ -74,7 +77,8 @@ class UploadVideo():
         cam.release()
         cv2.destroyAllWindows()
         return image_name
-
+    def print_dict(self):
+        print(self.timeline_dict)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--number", help = "Denotes number of videos will be taken")
@@ -82,6 +86,7 @@ if __name__ == "__main__":
     # print("Argument number received: ", args.number)
     number_of_invocations = int(args.number)
     my_upload  = UploadVideo()
+    # my_upload.print_dict()
     my_upload.video_upload(total_number=number_of_invocations)
     my_upload.fetch_result_from_sqs()
     i = 0
