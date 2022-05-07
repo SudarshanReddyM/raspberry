@@ -7,7 +7,7 @@ import cv2
 
 class Frames():
     def __init__(self):
-        self.time_to_execute = 5
+        self.time_to_execute = 300
 
         self.dict_for_time = dict()
         

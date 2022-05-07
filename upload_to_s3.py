@@ -4,6 +4,7 @@ import io
 import time
 import argparse
 import cv2
+import threading
 
 class UploadVideo():
     def __init__(self):
@@ -19,6 +20,8 @@ class UploadVideo():
         s3 = boto3_session.client("s3")
         number = 1
         time.sleep(3)
+        t1 = threading.Thread(target=self.fetch_result_from_sqs, args=(total_number,))
+        t1.start()
         while number <= total_number:
             # file_name = "video" + str(number) + ".h264"
             file_name = str(number) + ".h264"
@@ -26,11 +29,14 @@ class UploadVideo():
             # path_of_video_file = self.extract_frames(file_name)
             # print("Video Name :", path_of_video_file)
             self.upload_video_to_s3(s3, path_of_video_file, path_of_video_file.split("/")[-1])
+            # print(number)
             self.timeline_dict[str(number)] = time.time()
-            print(file_name, time.time())
+            # print(file_name, time.time())
             # print("upload success")
             number += 1
-            time.sleep(0.5)
+            # time.sleep(0.5)
+        t1.join()
+        print("Number: ", number)
         return
 
     def upload_video_to_s3(self, s3_client, file, file_name):
@@ -41,24 +47,28 @@ class UploadVideo():
         # print("Video uploaded to S3")
         return
     
-    def fetch_result_from_sqs(self):
+    def fetch_result_from_sqs(self, number):
+        time.sleep(2)
         queue = self.sqs_service.get_queue_by_name(QueueName=self.sqs_response_queue_name)
-        processed_time = time.time()
-        messages = queue.receive_messages(MaxNumberOfMessages=1, WaitTimeSeconds=20)
-        if messages:
-            for m in messages:
-                content = json.loads(m.body)
-                m.delete()
-                pic = list(content.keys())[0]
-                
-                picture_name = pic.split('.')[0]
-                # print("Pic: ", pic)
-                # print("Picture Name: ", picture_name)
-                # print("content: ", list(content.keys())[0])
-                print(f"The person {picture_name} recognized: ", content[pic])
-                print("Latency: ",processed_time - self.timeline_dict[picture_name])
-                print("request received", processed_time)
-                # print("content", list(content.values())[0])
+        i = 1
+        while i <= number:
+            processed_time = time.time()
+            messages = queue.receive_messages(MaxNumberOfMessages=1, WaitTimeSeconds=20)
+            if messages:
+                for m in messages:
+                    content = json.loads(m.body)
+                    m.delete()
+                    pic = list(content.keys())[0]
+                    picture_name = pic.split('.')[0]
+                    # print("Pic: ", pic)
+                    # print("Picture Name: ", picture_name)
+                    # print("content: ", list(content.keys())[0])
+                    print(f"The person {picture_name} recognized: ", content[pic])
+                    print("Latency: ",processed_time - self.timeline_dict.get(picture_name))
+                    # print("request received", processed_time)
+                    # print("content", list(content.values())[0])
+            i += 1    
+            # time.sleep(0.5)
         return
 
     def extract_frames(self, file_name):
@@ -88,7 +98,7 @@ if __name__ == "__main__":
     my_upload  = UploadVideo()
     # my_upload.print_dict()
     my_upload.video_upload(total_number=number_of_invocations)
-    my_upload.fetch_result_from_sqs()
-    i = 0
-    while i < number_of_invocations:
-        my_upload.fetch_result_from_sqs()
+    # my_upload.fetch_result_from_sqs()
+    # i = 0
+    # while i < number_of_invocations:
+    #     my_upload.fetch_result_from_sqs()
